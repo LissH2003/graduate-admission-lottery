@@ -1,0 +1,11 @@
+/* 研究生复试抽签系统 - 字体配置 */
+
+/* PingFang SC (系统自带字体) */
+body {
+  font-family: 'PingFang SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Monaco 等宽字体 - 用于投影数字和时钟 */
+.font-mono {
+  font-family: Monaco, 'Courier New', monospace;
+}

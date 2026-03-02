@@ -1,0 +1,100 @@
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* 研究生复试抽签系统 - 设计系统颜色 */
+  
+  /* Primary Colors */
+  --primary-500: #1E40AF;
+  --primary-400: #3B82F6;
+  
+  /* Status Colors */
+  --success: #059669;
+  --warning: #D97706;
+  --error: #DC2626;
+  --info: #0891B2;
+  
+  /* Neutral Colors */
+  --neutral-900: #111827;
+  --neutral-600: #4B5563;
+  --neutral-400: #9CA3AF;
+  
+  /* Background & Surface */
+  --bg-primary: #F9FAFB;
+  --surface: #FFFFFF;
+  --divider: #E5E7EB;
+  --bg-secondary: #F3F4F6;
+  
+  /* Tag Colors */
+  --tag-amber: #F59E0B;
+  --tag-green: #10B981;
+  --tag-red: #EF4444;
+  --tag-blue: #3B82F6;
+  
+  /* Special Colors */
+  --cyan: #06B6D4;
+  --selected-bg: #EFF6FF;
+  
+  /* Font Sizes (Design System) */
+  --font-display: 144px;
+  --font-h1: 48px;
+  --font-h2: 36px;
+  --font-h3: 24px;
+  --font-h4: 18px;
+  --font-body: 16px;
+  --font-caption: 14px;
+  --font-small: 12px;
+  
+  /* Original theme variables */
+  --font-size: 16px;
+  --background: #ffffff;
+  --foreground: oklch(0.145 0 0);
+}
+
+/* 自定义滚动条样式（白色） */
+/* For Webkit browsers (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F9FAFB;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ffffff;
+  border-radius: 4px;
+  border: 1px solid #E5E7EB;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #f5f5f5;
+}
+
+/* 全局输入框样式 - 确保文字可见 */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="tel"],
+input[type="number"],
+input[type="search"],
+input[type="url"],
+input[type="date"],
+input[type="time"],
+input[type="month"],
+textarea,
+select {
+  color: #111827;
+}
+
+input[type="text"]::placeholder,
+input[type="email"]::placeholder,
+input[type="password"]::placeholder,
+input[type="tel"]::placeholder,
+input[type="number"]::placeholder,
+input[type="search"]::placeholder,
+input[type="url"]::placeholder,
+textarea::placeholder {
+  color: #9CA3AF;
+}
