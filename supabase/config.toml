@@ -1,0 +1,6 @@
+# Supabase 配置文件
+# 用于 Edge Function 配置
+
+[functions.sso-auth]
+# SSO 认证 Edge Function 配置
+verify_jwt = false

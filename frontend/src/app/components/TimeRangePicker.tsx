@@ -1,6 +1,7 @@
 // 时间范围选择器组件
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Clock } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface TimeRangePickerProps {
   value: string; // 格式: "09:00-12:00"
@@ -28,7 +29,7 @@ export function TimeRangePicker({
       const [start, end] = value.split('-');
       const [startH, startM] = start.split(':').map(Number);
       const [endH, endM] = end.split(':').map(Number);
-      
+
       setStartHour(startH);
       setStartMinute(startM);
       setEndHour(endH);
@@ -55,7 +56,7 @@ export function TimeRangePicker({
 
   // 小时列表 (0-23)
   const hours = Array.from({ length: 24 }, (_, i) => i);
-  
+
   // 分钟列表 (0-59)
   const minutes = Array.from({ length: 60 }, (_, i) => i);
 
@@ -66,42 +67,18 @@ export function TimeRangePicker({
   const handleConfirm = () => {
     const startTime = `${formatTime(startHour)}:${formatTime(startMinute)}`;
     const endTime = `${formatTime(endHour)}:${formatTime(endMinute)}`;
-    
+
     // 验证时间顺序
     const startMinutes = startHour * 60 + startMinute;
     const endMinutes = endHour * 60 + endMinute;
-    
+
     if (startMinutes >= endMinutes) {
-      alert('结束时间必须晚于开始时间');
+      toast.warning('结束时间必须晚于开始时间');
       return;
     }
-    
+
     onChange(`${startTime}-${endTime}`);
     setIsOpen(false);
-  };
-
-  // 快速选择预设时间段
-  const handlePresetTime = (preset: string) => {
-    switch (preset) {
-      case 'morning':
-        setStartHour(9);
-        setStartMinute(0);
-        setEndHour(12);
-        setEndMinute(0);
-        break;
-      case 'afternoon':
-        setStartHour(14);
-        setStartMinute(0);
-        setEndHour(17);
-        setEndMinute(0);
-        break;
-      case 'fullday':
-        setStartHour(9);
-        setStartMinute(0);
-        setEndHour(17);
-        setEndMinute(0);
-        break;
-    }
   };
 
   return (
@@ -121,7 +98,7 @@ export function TimeRangePicker({
       {/* 下拉选择器 */}
       {isOpen && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-[#E5E7EB] rounded-lg shadow-lg z-50 p-2 w-max min-w-full">
-          
+
           {/* 时间选择器 - 居中显示 */}
           <div className="flex gap-2 justify-center">
             {/* 开始时间 */}
@@ -137,11 +114,10 @@ export function TimeRangePicker({
                         key={hour}
                         type="button"
                         onClick={() => setStartHour(hour)}
-                        className={`w-full px-1 py-0.5 text-xs text-center hover:bg-[#F3F4F6] transition-colors ${
-                          startHour === hour
+                        className={`w-full px-1 py-0.5 text-xs text-center hover:bg-[#F3F4F6] transition-colors ${startHour === hour
                             ? 'bg-[#EFF6FF] text-[#3B82F6] font-medium'
                             : 'text-[#374151]'
-                        }`}
+                          }`}
                       >
                         {formatTime(hour)}
                       </button>
@@ -158,11 +134,10 @@ export function TimeRangePicker({
                         key={minute}
                         type="button"
                         onClick={() => setStartMinute(minute)}
-                        className={`w-full px-1 py-0.5 text-xs text-center hover:bg-[#F3F4F6] transition-colors ${
-                          startMinute === minute
+                        className={`w-full px-1 py-0.5 text-xs text-center hover:bg-[#F3F4F6] transition-colors ${startMinute === minute
                             ? 'bg-[#EFF6FF] text-[#3B82F6] font-medium'
                             : 'text-[#374151]'
-                        }`}
+                          }`}
                       >
                         {formatTime(minute)}
                       </button>
@@ -190,11 +165,10 @@ export function TimeRangePicker({
                         key={hour}
                         type="button"
                         onClick={() => setEndHour(hour)}
-                        className={`w-full px-1 py-0.5 text-xs text-center hover:bg-[#F3F4F6] transition-colors ${
-                          endHour === hour
+                        className={`w-full px-1 py-0.5 text-xs text-center hover:bg-[#F3F4F6] transition-colors ${endHour === hour
                             ? 'bg-[#EFF6FF] text-[#3B82F6] font-medium'
                             : 'text-[#374151]'
-                        }`}
+                          }`}
                       >
                         {formatTime(hour)}
                       </button>
@@ -211,11 +185,10 @@ export function TimeRangePicker({
                         key={minute}
                         type="button"
                         onClick={() => setEndMinute(minute)}
-                        className={`w-full px-1 py-0.5 text-xs text-center hover:bg-[#F3F4F6] transition-colors ${
-                          endMinute === minute
+                        className={`w-full px-1 py-0.5 text-xs text-center hover:bg-[#F3F4F6] transition-colors ${endMinute === minute
                             ? 'bg-[#EFF6FF] text-[#3B82F6] font-medium'
                             : 'text-[#374151]'
-                        }`}
+                          }`}
                       >
                         {formatTime(minute)}
                       </button>

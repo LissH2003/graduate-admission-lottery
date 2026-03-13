@@ -1,6 +1,6 @@
 // 考生卡片组件 - Card/Candidate（72px高，圆角8px，含选中态左边框4px）
-import React from 'react';
-import { StatusTag, TagStatus } from './StatusTag';
+// React 17+ 不需要显式导入
+import { StatusTag, type TagStatus } from './StatusTag';
 
 export interface CandidateCardProps {
   id: string;

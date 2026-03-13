@@ -1,6 +1,21 @@
 // V2-PC抽签控制台（竖版单列布局，无滚动条设计 - 1440×900px）
 // 已优化：删除刷新数据和导出Excel按钮，重新开始改为重置抽签
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
+
+// 格式化时间显示（将 ISO 字符串转换为友好格式）
+const formatTime = (isoString: string | undefined): string => {
+  if (!isoString) return '-';
+  try {
+    const date = new Date(isoString);
+    return date.toLocaleTimeString('zh-CN', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  } catch {
+    return isoString;
+  }
+};
 import { useNavigate } from 'react-router';
 import { LotteryButton } from '../components/lottery/LotteryButton';
 import {
@@ -12,19 +27,18 @@ import {
   FileText,
   AlertTriangle,
   Clock,
-  Wifi,
   LogOut,
   Search,
   ArrowLeft,
   Layers,
-  ChevronDown,
   RotateCcw,
 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
+import { logout } from '../../lib/auth';
 import * as candidateStorage from '../../storage/candidateStorage';
-import * as groupStorage from '../../storage/groupStorage';
-import * as batchStorage from '../../storage/batchStorage';
-import * as volunteerStorage from '../../storage/volunteerStorage';
+// import * as groupStorage from '../../storage/groupStorage';
+// import * as batchStorage from '../../storage/batchStorage';
+// import * as volunteerStorage from '../../storage/volunteerStorage';
 import * as XLSX from 'xlsx';
 
 export default function LotteryConsolePage() {
@@ -32,6 +46,8 @@ export default function LotteryConsolePage() {
   const {
     currentUser,
     selectedGroup,
+    setCurrentUser,
+    setCurrentAcademy,
   } = useAppContext();
 
   const [activeTab, setActiveTab] = useState<'waiting' | 'drawn' | 'absent'>('waiting');
@@ -193,7 +209,7 @@ export default function LotteryConsolePage() {
           candidateStorage.updateCandidate(selectedCandidate.id, {
             status: 'drawn',
             drawnNumber: randomNumber,
-            drawnTime: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+            drawnTime: new Date().toISOString(),
           });
           
           // 重新加载数据
@@ -258,7 +274,7 @@ export default function LotteryConsolePage() {
           candidateStorage.updateCandidate(targetCandidate.id, {
             status: 'drawn',
             drawnNumber: randomNumber,
-            drawnTime: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+            drawnTime: new Date().toISOString(),
           });
           
           // 重新加载数据
@@ -323,7 +339,7 @@ export default function LotteryConsolePage() {
       '抽签号': candidate.drawnNumber || '-',
       '姓名': candidate.name || '',
       '身份证号': candidate.idCard || '', // 不脱敏
-      '抽签时间': candidate.drawnTime || '-',
+      '抽签时间': formatTime(candidate.drawnTime),
       '状态': candidate.status === 'drawn' ? '已抽签' : '缺考',
     }));
 
@@ -426,13 +442,21 @@ export default function LotteryConsolePage() {
               <MonitorPlay size={16} />
               <span className="font-medium">投屏</span>
             </button>
-            {/* 退出按钮 - 移动端图标化 */}
+            {/* 退出登录按钮 */}
             <button
-              onClick={() => navigate('/')}
+              type="button"
+              onClick={async () => {
+                localStorage.removeItem('current_user');
+                localStorage.removeItem('current_academy');
+                await logout();
+                setCurrentUser(null);
+                setCurrentAcademy(null);
+                window.location.href = './';
+              }}
               className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 text-[#6B7280] hover:text-[#DC2626] hover:bg-[#FEF2F2] rounded-lg transition-all text-sm"
             >
               <LogOut size={16} />
-              <span className="font-medium hidden sm:inline">退出</span>
+              <span className="font-medium hidden sm:inline">退出登录</span>
             </button>
           </div>
         </div>
@@ -511,7 +535,7 @@ export default function LotteryConsolePage() {
                               {/* 已抽签Tab - 显示抽签时间 */}
                               {activeTab === 'drawn' && candidate.drawnTime && (
                                 <span className="ml-2 text-[#059669]">
-                                  · {candidate.drawnTime}
+                                  · {formatTime(candidate.drawnTime)}
                                 </span>
                               )}
                             </div>
@@ -706,7 +730,7 @@ export default function LotteryConsolePage() {
                             </div>
                             <div className="hidden sm:block">
                               <span className="text-[#9CA3AF]">抽签时间：</span>
-                              <span className="text-[#4B5563] font-medium">{candidate.drawnTime}</span>
+                              <span className="text-[#4B5563] font-medium">{formatTime(candidate.drawnTime)}</span>
                             </div>
                             <div>
                               <span className="text-[#9CA3AF]">身份证号：</span>
@@ -893,7 +917,7 @@ export default function LotteryConsolePage() {
                         </div>
                         <div className="truncate">
                           <span className="text-[#9CA3AF]">抽签时间：</span>
-                          <span className="text-[#111827] font-medium">{selectedCandidate.drawnTime}</span>
+                          <span className="text-[#111827] font-medium">{formatTime(selectedCandidate.drawnTime)}</span>
                         </div>
                       </>
                     )}
@@ -1052,7 +1076,7 @@ export default function LotteryConsolePage() {
                         </div>
                         <div className="flex items-center gap-1 text-xs text-[#6B7280]">
                           <Clock size={11} />
-                          <span>{candidate.drawnTime}</span>
+                          <span>{formatTime(candidate.drawnTime)}</span>
                         </div>
                       </div>
 
@@ -1375,7 +1399,7 @@ export default function LotteryConsolePage() {
                         <td className="px-4 py-3 text-sm font-medium text-[#111827]">{candidate.name}</td>
                         <td className="px-4 py-3 text-sm text-[#4B5563] font-mono">{maskIdCard(candidate.idCard)}</td>
                         <td className="px-4 py-3 text-sm text-[#4B5563]">
-                          {candidate.drawnTime || <span className="text-[#9CA3AF]">-</span>}
+                          {formatTime(candidate.drawnTime)}
                         </td>
                         <td className="px-4 py-3">
                           {candidate.status === 'drawn' ? (
@@ -1447,7 +1471,7 @@ export default function LotteryConsolePage() {
                       {candidate.drawnTime && (
                         <div className="flex items-center gap-1.5">
                           <span className="text-xs text-[#9CA3AF]">时间：</span>
-                          <span className="text-xs text-[#4B5563]">{candidate.drawnTime}</span>
+                          <span className="text-xs text-[#4B5563]">{formatTime(candidate.drawnTime)}</span>
                         </div>
                       )}
                     </div>

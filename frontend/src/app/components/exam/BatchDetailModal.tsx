@@ -1,5 +1,5 @@
 // 考场批次详情弹窗组件
-import React from 'react';
+// React 17+ 不需要显式导入
 import { X, Calendar, Clock, Users, MapPin } from 'lucide-react';
 import { LotteryButton } from '../lottery/LotteryButton';
 import * as examRoomStorage from '../../../storage/examRoomStorage';

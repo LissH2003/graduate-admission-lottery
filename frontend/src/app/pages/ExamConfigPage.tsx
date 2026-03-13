@@ -1,5 +1,5 @@
 // M4-考场配置管理（业务核心）
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { LotteryButton } from '../components/lottery/LotteryButton';
 import { BatchDetailModal } from '../components/exam/BatchDetailModal';
@@ -9,8 +9,6 @@ import {
   Filter,
   Edit,
   Trash2,
-  Download,
-  Upload,
   MapPin,
   ArrowLeft,
   X,
@@ -18,14 +16,15 @@ import {
   Building2,
   Layers,
   Eye,
-  Calendar,
-  Clock,
-  Users,
+  Upload,
+  Download,
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import * as examRoomStorage from '../../storage/examRoomStorage';
 import * as groupStorage from '../../storage/groupStorage';
-import * as batchStorage from '../../storage/batchStorage';
-import * as candidateStorage from '../../storage/candidateStorage';
+// import * as batchStorage from '../../storage/batchStorage';
+// import * as candidateStorage from '../../storage/candidateStorage';
+import { toast } from 'sonner';
 
 export default function ExamConfigPage() {
   const navigate = useNavigate();
@@ -80,9 +79,9 @@ export default function ExamConfigPage() {
   });
 
   // 新建考场
-  const handleCreateRoom = () => {
+  const handleCreateRoom = async () => {
     if (!formData.name || !formData.location || !formData.building || !formData.floor || !formData.capacity) {
-      alert('请填写所有必填项');
+      toast.warning('请填写所有必填项');
       return;
     }
 
@@ -99,16 +98,22 @@ export default function ExamConfigPage() {
       description: formData.description,
     };
 
-    examRoomStorage.addExamRoom(newRoom);
-    loadExamRooms();
-    setShowNewModal(false);
-    resetFormData();
+    const newId = await examRoomStorage.addExamRoom(newRoom);
+    if (newId) {
+      toast.success('考场创建成功');
+      await examRoomStorage.refreshExamRooms();
+      loadExamRooms();
+      setShowNewModal(false);
+      resetFormData();
+    } else {
+      toast.error('考场创建失败');
+    }
   };
 
   // 编辑考场
-  const handleEditRoom = () => {
+  const handleEditRoom = async () => {
     if (!selectedRoom || !formData.name || !formData.location || !formData.building || !formData.floor || !formData.capacity) {
-      alert('请填写所有必填项');
+      toast.warning('请填写所有必填项');
       return;
     }
 
@@ -122,10 +127,12 @@ export default function ExamConfigPage() {
       description: formData.description,
     });
 
+    await examRoomStorage.refreshExamRooms();
     loadExamRooms();
     setShowEditModal(false);
     setSelectedRoom(null);
     resetFormData();
+    toast.success('考场更新成功');
   };
 
   // 删除考场
@@ -135,7 +142,7 @@ export default function ExamConfigPage() {
     // 检查是否有批次关联该考场
     const relatedGroups = groupStorage.getGroupsByExamRoomId(selectedRoom.id);
     if (relatedGroups.length > 0) {
-      alert(`无法删除：该考场下有 ${relatedGroups.length} 个分组，请先删除或移动分组`);
+      toast.error(`无法删除：该考场下有 ${relatedGroups.length} 个分组，请先删除或移动分组`);
       return;
     }
 
@@ -158,7 +165,34 @@ export default function ExamConfigPage() {
     });
   };
 
-  // 导出考场数据
+  // 下载导入模板
+  const handleDownloadTemplate = () => {
+    const templateData = [
+      { 考场名称: '机械楼301', 位置: '机械楼', 楼栋: '机械楼', 楼层: '3', 容量: 30, 设施: '投影仪;白板;音响', 状态: '启用', 备注: '主考场' },
+      { 考场名称: '机械楼302', 位置: '机械楼', 楼栋: '机械楼', 楼层: '3', 容量: 25, 设施: '投影仪;白板', 状态: '启用', 备注: '' },
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(templateData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, '考场导入模板');
+
+    // 设置列宽
+    worksheet['!cols'] = [
+      { wch: 12 }, // 考场名称
+      { wch: 10 }, // 位置
+      { wch: 10 }, // 楼栋
+      { wch: 6 },  // 楼层
+      { wch: 6 },  // 容量
+      { wch: 20 }, // 设施
+      { wch: 6 },  // 状态
+      { wch: 15 }, // 备注
+    ];
+
+    XLSX.writeFile(workbook, `考场导入模板_${new Date().toLocaleDateString('zh-CN')}.xlsx`);
+    toast.success('模板下载成功');
+  };
+
+  /* 导出考场数据 - 预留功能
   const handleExport = () => {
     const csvHeader = '考场ID,考场名称,位置,楼栋,楼层,容量,设施,状态,创建时间,备注\n';
     const csvRows = filteredRooms
@@ -177,54 +211,91 @@ export default function ExamConfigPage() {
     link.href = URL.createObjectURL(blob);
     link.download = `考场数据_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.csv`;
     link.click();
-  };
+  }; */
 
-  // 导入考场数据
+  // 导入考场数据（Excel格式）
   const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
-        const text = e.target?.result as string;
-        const lines = text.split('\n').filter((line) => line.trim());
-
-        // 跳过表头
-        const dataLines = lines.slice(1);
+        const data = e.target?.result;
+        const workbook = XLSX.read(data, { type: 'binary' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet) as Array<{
+          考场名称?: string;
+          位置?: string;
+          楼栋?: string;
+          楼层?: string;
+          容量?: number | string;
+          设施?: string;
+          状态?: string;
+          备注?: string;
+          name?: string;
+          location?: string;
+          building?: string;
+          floor?: string;
+          capacity?: number | string;
+          facilities?: string;
+          status?: string;
+          description?: string;
+        }>;
 
         let importedCount = 0;
-        dataLines.forEach((line) => {
-          const [id, name, location, building, floor, capacity, facilities, status, createdAt, description] = line.split(',');
+        let skippedCount = 0;
 
-          if (name && location && building && floor && capacity) {
+        for (const row of jsonData) {
+          // 支持中文和英文字段名
+          const name = row.考场名称 || row.name || '';
+          const location = row.位置 || row.location || '';
+          const building = row.楼栋 || row.building || '';
+          const floor = row.楼层 || row.floor || '';
+          const capacity = row.容量 || row.capacity || 30;
+          const facilities = row.设施 || row.facilities || '';
+          const status = row.状态 || row.status || '启用';
+          const description = row.备注 || row.description || '';
+
+          if (name && location && building && floor) {
             const newRoom: examRoomStorage.ExamRoom = {
-              id: id || `room-${Date.now()}-${Math.random()}`,
-              name: name.trim(),
-              location: location.trim(),
-              building: building.trim(),
-              floor: floor.trim(),
-              capacity: parseInt(capacity.trim()) || 30,
-              facilities: facilities ? facilities.split(';').map((f) => f.trim()) : [],
-              status: status?.includes('停用') ? 'inactive' : 'active',
-              createdAt: createdAt?.trim() || new Date().toLocaleString('zh-CN'),
-              description: description?.trim() || '',
+              id: `room-${Date.now()}-${Math.random()}`,
+              name: name.toString().trim(),
+              location: location.toString().trim(),
+              building: building.toString().trim(),
+              floor: floor.toString().trim(),
+              capacity: parseInt(capacity.toString()) || 30,
+              facilities: facilities ? facilities.toString().split(';').map((f) => f.trim()).filter(Boolean) : [],
+              status: status.toString().includes('停用') ? 'inactive' : 'active',
+              createdAt: new Date().toLocaleString('zh-CN'),
+              description: description.toString().trim(),
             };
 
-            examRoomStorage.addExamRoom(newRoom);
+            await examRoomStorage.addExamRoom(newRoom);
             importedCount++;
+          } else {
+            skippedCount++;
           }
-        });
+        }
 
+        await examRoomStorage.refreshExamRooms();
         loadExamRooms();
-        alert(`成功导入 ${importedCount} 条考场数据`);
+        if (importedCount > 0) {
+          toast.success(`成功导入 ${importedCount} 条考场数据${skippedCount > 0 ? `，跳过 ${skippedCount} 条无效数据` : ''}`);
+        } else {
+          toast.warning('没有有效的考场数据可导入');
+        }
         setShowImportModal(false);
+        
+        // 清空文件输入
+        event.target.value = '';
       } catch (error) {
         console.error('Import error:', error);
-        alert('导入失败，请检查文件格式');
+        toast.error('导入失败，请检查文件格式是否为 Excel (.xlsx)');
       }
     };
-    reader.readAsText(file);
+    reader.readAsBinaryString(file);
   };
 
   // 获取考场使用的批次数量
@@ -317,6 +388,13 @@ export default function ExamConfigPage() {
             </div>
 
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="flex items-center gap-1.5 px-4 py-2 text-sm text-[#374151] bg-white border border-[#E5E7EB] rounded-lg hover:bg-[#F9FAFB] transition-colors"
+              >
+                <Upload size={16} />
+                批量导入
+              </button>
               <LotteryButton onClick={() => setShowNewModal(true)}>
                 <Plus size={18} />
                 新建考场
@@ -357,10 +435,11 @@ export default function ExamConfigPage() {
                   </div>
                   {/* 启用/停用开关 */}
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       examRoomStorage.updateExamRoom(room.id, {
                         status: room.status === 'active' ? 'inactive' : 'active',
                       });
+                      await examRoomStorage.refreshExamRooms();
                       loadExamRooms();
                     }}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:ring-offset-2 ${
@@ -784,7 +863,7 @@ export default function ExamConfigPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-[#111827]">导入考场数据</h3>
+              <h3 className="text-xl font-bold text-[#111827]">批量导入考场</h3>
               <button
                 onClick={() => setShowImportModal(false)}
                 className="text-[#9CA3AF] hover:text-[#111827]"
@@ -794,28 +873,64 @@ export default function ExamConfigPage() {
             </div>
 
             <div className="space-y-4">
-              <div className="bg-[#EFF6FF] border border-[#BFDBFE] rounded-lg p-4">
-                <p className="text-sm text-[#1E40AF] mb-2">
-                  <strong>CSV 文件格式要求：</strong>
-                </p>
-                <ul className="text-xs text-[#1E40AF] space-y-1 list-disc list-inside">
-                  <li>第一行为表头（考场ID,考场名称,置,楼栋,楼层,容量,设施,状态,创建时间,备注）</li>
-                  <li>设施使用分号(;)分隔，如：投影仪;白板;音响</li>
-                  <li>状态填写"启用"或"停用"</li>
-                  <li>文件编码为 UTF-8</li>
-                </ul>
+              {/* 模板下载 */}
+              <div className="bg-[#F0FDF4] border border-[#BBF7D0] rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-[#22C55E] flex items-center justify-center flex-shrink-0">
+                    <Download size={20} className="text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-[#166534] mb-1">
+                      下载导入模板
+                    </p>
+                    <p className="text-xs text-[#166534] mb-3">
+                      请先下载模板文件，按要求填写后上传
+                    </p>
+                    <button
+                      onClick={handleDownloadTemplate}
+                      className="text-xs px-3 py-1.5 bg-[#22C55E] text-white rounded-lg hover:bg-[#16A34A] transition-colors"
+                    >
+                      下载 Excel 模板
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-[#4B5563] mb-2">
-                  选择 CSV 文件
+              {/* 文件上传 */}
+              <div className="bg-[#EFF6FF] border border-[#BFDBFE] rounded-lg p-4">
+                <p className="text-sm text-[#1E40AF] mb-2">
+                  <strong>Excel 文件格式要求：</strong>
+                </p>
+                <ul className="text-xs text-[#1E40AF] space-y-1 list-disc list-inside mb-4">
+                  <li>必填字段：考场名称、位置、楼栋、楼层、容量</li>
+                  <li>设施使用分号(;)分隔，如：投影仪;白板;音响</li>
+                  <li>状态填写"启用"或"停用"</li>
+                </ul>
+
+                <label className="block">
+                  <span className="block text-sm font-medium text-[#4B5563] mb-3">
+                    选择 Excel 文件
+                  </span>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept=".xlsx,.xls"
+                      onChange={handleImport}
+                      className="hidden"
+                      id="exam-file-input"
+                    />
+                    <label
+                      htmlFor="exam-file-input"
+                      className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-[#3B82F6] text-white rounded-lg cursor-pointer hover:bg-[#2563EB] active:bg-[#1D4ED8] transition-all duration-200 shadow-sm hover:shadow-md"
+                    >
+                      <Upload size={18} />
+                      <span className="font-medium">点击选择文件</span>
+                    </label>
+                  </div>
+                  <p className="mt-2 text-xs text-[#9CA3AF]">
+                    支持 .xlsx、.xls 格式，文件大小不超过 10MB
+                  </p>
                 </label>
-                <input
-                  type="file"
-                  accept=".csv"
-                  onChange={handleImport}
-                  className="w-full px-4 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
-                />
               </div>
             </div>
 
@@ -825,7 +940,7 @@ export default function ExamConfigPage() {
                 className="flex-1"
                 onClick={() => setShowImportModal(false)}
               >
-                取消
+                关闭
               </LotteryButton>
             </div>
           </div>

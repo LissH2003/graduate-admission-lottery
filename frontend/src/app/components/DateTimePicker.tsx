@@ -1,6 +1,6 @@
 // 日期时间选择器组件
-import React, { useState, useRef, useEffect } from 'react';
-import { Calendar as CalendarIcon, Clock } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Calendar as CalendarIcon } from 'lucide-react';
 
 interface DateTimePickerProps {
   value: string; // 格式: "2024-03" 或 "2024-03-15"
@@ -87,11 +87,14 @@ export function DateTimePicker({
   const getDisplayValue = () => {
     if (!value) return '';
     
+    // 确保 value 是字符串（处理 Date 对象或其他类型）
+    const stringValue = typeof value === 'string' ? value : String(value);
+    
     if (type === 'month') {
-      const [year, month] = value.split('-');
+      const [year, month] = stringValue.split('-');
       return `${year}年${parseInt(month)}月`;
     } else {
-      const [year, month, day] = value.split('-');
+      const [year, month, day] = stringValue.split('-');
       return `${year}年${parseInt(month)}月${parseInt(day)}日`;
     }
   };

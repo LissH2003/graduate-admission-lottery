@@ -80,13 +80,13 @@ export default function GroupManagePage() {
     if (batchId) {
       const batch = batchStorage.getBatchById(batchId);
       setCurrentBatch(batch);
-      
+
       const batchGroups = groupStorage.getGroupsByBatchId(batchId);
       setGroups(batchGroups);
-      
+
       const allCandidates = candidateStorage.getAllCandidates();
       setCandidates(allCandidates);
-      
+
       // 更新每个分组的考生数量
       batchGroups.forEach((group) => {
         const count = candidateStorage.getCandidatesByGroupId(group.id).length;
@@ -94,7 +94,7 @@ export default function GroupManagePage() {
           groupStorage.updateGroupCandidateCount(group.id, count);
         }
       });
-      
+
       // 更新批次统计
       if (batch) {
         const totalCandidates = candidateStorage.getCandidatesByBatchId(batchId, batchGroups).length;
@@ -109,13 +109,13 @@ export default function GroupManagePage() {
     const groupDate = new Date(group.date);
     const [startHour, startMinute] = group.time.split(':').map(Number);
     const [endHour, endMinute] = group.endTime.split(':').map(Number);
-    
+
     const startTime = new Date(groupDate);
     startTime.setHours(startHour, startMinute, 0, 0);
-    
+
     const endTime = new Date(groupDate);
     endTime.setHours(endHour, endMinute, 0, 0);
-    
+
     if (now < startTime) {
       return 'notStarted';
     } else if (now >= startTime && now <= endTime) {
@@ -143,12 +143,12 @@ export default function GroupManagePage() {
     const matchesSearch =
       group.name.includes(searchQuery) ||
       group.description.includes(searchQuery);
-    
+
     // 状态筛选
     if (groupStatusFilter === 'all') {
       return matchesSearch;
     }
-    
+
     const groupStatus = getGroupStatus(group);
     return matchesSearch && groupStatus === groupStatusFilter;
   });
@@ -184,7 +184,7 @@ export default function GroupManagePage() {
       try {
         const text = e.target?.result as string;
         const lines = text.split('\n').filter(line => line.trim()); // 过滤空行
-        
+
         if (lines.length < 2) {
           alert('文件内容为空或格式不正确');
           return;
@@ -193,7 +193,7 @@ export default function GroupManagePage() {
         const newGroups: { [key: string]: groupStorage.Group } = {};
         const newCandidates: candidateStorage.Candidate[] = [];
         const examRoomMap: { [key: string]: string } = {}; // 考场名称到ID的映射
-        
+
         // 获取所有现有考场
         const existingRooms = examRoomStorage.getAllExamRooms();
         existingRooms.forEach(room => {
@@ -206,7 +206,7 @@ export default function GroupManagePage() {
           if (!line) continue;
 
           const fields = line.split(',').map(s => s.trim());
-          
+
           // 确保至少有必填字段：分组名称、面试日期、面试时间、面试地点、姓名、身份证号
           if (fields.length < 6 || !fields[0] || !fields[1] || !fields[2] || !fields[3] || !fields[4] || !fields[5]) {
             console.warn(`跳过第 ${i + 1} 行：缺少必填字段`);
@@ -433,13 +433,13 @@ export default function GroupManagePage() {
   // 删除分组
   const handleDeleteGroup = () => {
     if (!selectedGroup) return;
-    
+
     // 删除分组下的所有考生
     candidateStorage.deleteCandidatesByGroupId(selectedGroup.id);
-    
+
     // 删除分组
     groupStorage.deleteGroup(selectedGroup.id);
-    
+
     loadData();
     setShowDeleteConfirm(false);
     setSelectedGroup(null);
@@ -481,9 +481,9 @@ export default function GroupManagePage() {
   // 导出当前分组考生（带筛选）
   const handleExportCurrentGroupCandidates = () => {
     if (!selectedGroup) return;
-    
+
     const filteredCandidates = getFilteredCandidates();
-    
+
     if (filteredCandidates.length === 0) {
       alert('没有符合条件的考生数据');
       return;
@@ -497,12 +497,12 @@ export default function GroupManagePage() {
       })
       .filter(Boolean)
       .join('、') || '未配置';
-    
+
     const exportData = filteredCandidates.map((candidate) => {
-      const statusText = 
-        candidate.status === 'waiting' ? '待抽签' : 
-        candidate.status === 'drawn' ? '已抽签' : 
-        candidate.status === 'completed' ? '已完成' : '缺考';
+      const statusText =
+        candidate.status === 'waiting' ? '待抽签' :
+          candidate.status === 'drawn' ? '已抽签' :
+            candidate.status === 'completed' ? '已完成' : '缺考';
 
       return {
         '批次名称': currentBatch?.name || '',
@@ -533,7 +533,7 @@ export default function GroupManagePage() {
 
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, selectedGroup.name);
-    
+
     const fileName = `${selectedGroup.name}_考生明细_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.xlsx`;
     XLSX.writeFile(workbook, fileName);
   };
@@ -541,14 +541,14 @@ export default function GroupManagePage() {
   // 筛选考生
   const getFilteredCandidates = () => {
     if (!selectedGroup) return [];
-    
+
     let filtered = getGroupCandidates(selectedGroup.id);
-    
+
     // 按状态筛选
     if (candidateStatusFilter !== 'all') {
       filtered = filtered.filter(c => c.status === candidateStatusFilter);
     }
-    
+
     // 按关键词搜索
     if (candidateSearchQuery) {
       const query = candidateSearchQuery.toLowerCase();
@@ -560,7 +560,7 @@ export default function GroupManagePage() {
         (c.phone && c.phone.includes(query))
       );
     }
-    
+
     return filtered;
   };
 
@@ -568,14 +568,14 @@ export default function GroupManagePage() {
   // 导出分组名单（优化为Excel格式）
   const handleExportGroup = (group: groupStorage.Group) => {
     const groupCandidates = getGroupCandidates(group.id);
-    
+
     if (groupCandidates.length === 0) {
       alert('该分组暂无考生数据');
       return;
     }
 
     const examRoom = examRoomStorage.getExamRoomById(group.examRoomId);
-    
+
     // 获取该分组的志愿者名单
     const volunteerNames = (group.volunteerIds || [])
       .map(id => {
@@ -584,13 +584,13 @@ export default function GroupManagePage() {
       })
       .filter(Boolean)
       .join('、') || '未配置';
-    
+
     // 准备导出数据
     const exportData = groupCandidates.map((candidate) => {
-      const statusText = 
-        candidate.status === 'waiting' ? '待抽签' : 
-        candidate.status === 'drawn' ? '已抽签' : 
-        candidate.status === 'completed' ? '已完成' : '缺考';
+      const statusText =
+        candidate.status === 'waiting' ? '待抽签' :
+          candidate.status === 'drawn' ? '已抽签' :
+            candidate.status === 'completed' ? '已完成' : '缺考';
 
       return {
         '批次名称': currentBatch?.name || '',
@@ -613,7 +613,7 @@ export default function GroupManagePage() {
 
     // 创建工作表
     const worksheet = XLSX.utils.json_to_sheet(exportData);
-    
+
     // 设置列宽
     const colWidths = [
       { wch: 30 }, // 批次名称
@@ -637,10 +637,10 @@ export default function GroupManagePage() {
     // 创建工作簿
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, group.name);
-    
+
     // 生成文件名
     const fileName = `${group.name}_考生名单_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.xlsx`;
-    
+
     // 导出文件
     XLSX.writeFile(workbook, fileName);
   };
@@ -658,7 +658,7 @@ export default function GroupManagePage() {
     groups.forEach((group) => {
       const groupCandidates = getGroupCandidates(group.id);
       const examRoom = examRoomStorage.getExamRoomById(group.examRoomId);
-      
+
       // 获取该分组的志愿者名单
       const volunteerNames = (group.volunteerIds || [])
         .map(id => {
@@ -669,10 +669,10 @@ export default function GroupManagePage() {
         .join('、') || '未配置';
 
       groupCandidates.forEach((candidate) => {
-        const statusText = 
-          candidate.status === 'waiting' ? '待抽签' : 
-          candidate.status === 'drawn' ? '已抽签' : 
-          candidate.status === 'completed' ? '已完成' : '缺考';
+        const statusText =
+          candidate.status === 'waiting' ? '待抽签' :
+            candidate.status === 'drawn' ? '已抽签' :
+              candidate.status === 'completed' ? '已完成' : '缺考';
 
         exportData.push({
           '分组名称': group.name,
@@ -700,7 +700,7 @@ export default function GroupManagePage() {
 
     // 创建工作表
     const worksheet = XLSX.utils.json_to_sheet(exportData);
-    
+
     // 设置列宽
     const colWidths = [
       { wch: 25 }, // 分组名称
@@ -723,10 +723,10 @@ export default function GroupManagePage() {
     // 创建工作簿
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, '分组考生数据');
-    
+
     // 生成文件名
     const fileName = `${batchNo}_全部分组数据_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.xlsx`;
-    
+
     // 导出文件
     XLSX.writeFile(workbook, fileName);
   };
@@ -734,7 +734,7 @@ export default function GroupManagePage() {
   // 下载分组考生导入模板
   const handleDownloadGroupTemplate = () => {
     if (!selectedGroup) return;
-    
+
     const csvContent = `姓名,身份证号,报名编号,考生号,手机号
 张三,320102199001011234,2024ME0001,001,13800138000
 李四,320102199002025678,2024ME0002,002,13800138001
@@ -759,21 +759,21 @@ export default function GroupManagePage() {
       try {
         const text = e.target?.result as string;
         const lines = text.split('\n').filter(line => line.trim()); // 过滤空行
-        
+
         if (lines.length < 2) {
           alert('文件内容为空或格式不正确');
           return;
         }
 
         const newCandidates: candidateStorage.Candidate[] = [];
-        
+
         // 跳过表头，从第二行开始处理
         for (let i = 1; i < lines.length; i++) {
           const line = lines[i].trim();
           if (!line) continue;
 
           const fields = line.split(',').map(s => s.trim());
-          
+
           // 确保至少有姓名和身份证号
           if (fields.length < 2 || !fields[0] || !fields[1]) {
             console.warn(`跳过第 ${i + 1} 行：缺少必填字段`);
@@ -807,7 +807,7 @@ export default function GroupManagePage() {
 
         // 批量添加考生
         candidateStorage.addCandidates(newCandidates);
-        
+
         // 更新分组考生数量
         groupStorage.updateGroupCandidateCount(
           selectedGroup.id,
@@ -879,7 +879,7 @@ export default function GroupManagePage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <LotteryButton 
+            <LotteryButton
               className="text-xs px-3 py-2"
               onClick={() => navigate('/batch-manage')}
             >
@@ -908,7 +908,7 @@ export default function GroupManagePage() {
                   className="w-full pl-10 pr-4 py-2 text-sm text-[#111827] bg-white border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent placeholder:text-[#9CA3AF]"
                 />
               </div>
-              
+
               {/* 状态筛选 */}
               <div className="relative">
                 <Filter
@@ -927,7 +927,7 @@ export default function GroupManagePage() {
                 </select>
               </div>
             </div>
-            
+
             <div className="flex gap-2">
               <LotteryButton
                 variant="secondary"
@@ -937,14 +937,14 @@ export default function GroupManagePage() {
                 <Upload size={16} />
                 批量导入
               </LotteryButton>
-              <LotteryButton 
+              <LotteryButton
                 className="text-xs px-3 py-2"
                 onClick={() => setShowNewGroupModal(true)}
               >
                 <Plus size={16} />
                 新建分组
               </LotteryButton>
-              <LotteryButton 
+              <LotteryButton
                 className="text-xs px-3 py-2"
                 onClick={handleExportAll}
               >
@@ -967,7 +967,7 @@ export default function GroupManagePage() {
               })
               .filter(Boolean)
               .join('、');
-            
+
             return (
               <div
                 key={group.id}
@@ -1491,20 +1491,20 @@ export default function GroupManagePage() {
                 const filteredCandidates = getFilteredCandidates();
                 const totalCount = getGroupCandidates(selectedGroup.id).length;
                 return (
-                <div className="mt-3 flex items-center justify-between text-xs">
-                  <span className="text-[#6B7280]">
-                    显示 <span className="font-bold text-[#3B82F6]">{filteredCandidates.length}</span> / {totalCount} 名考生
-                  </span>
-                  <button
-                    onClick={() => {
-                      setCandidateSearchQuery('');
-                      setCandidateStatusFilter('all');
-                    }}
-                    className="text-[#3B82F6] hover:text-[#1E40AF] font-medium"
-                  >
-                    清空筛选
-                  </button>
-                </div>
+                  <div className="mt-3 flex items-center justify-between text-xs">
+                    <span className="text-[#6B7280]">
+                      显示 <span className="font-bold text-[#3B82F6]">{filteredCandidates.length}</span> / {totalCount} 名考生
+                    </span>
+                    <button
+                      onClick={() => {
+                        setCandidateSearchQuery('');
+                        setCandidateStatusFilter('all');
+                      }}
+                      className="text-[#3B82F6] hover:text-[#1E40AF] font-medium"
+                    >
+                      清空筛选
+                    </button>
+                  </div>
                 );
               })()}
             </div>
@@ -1514,80 +1514,80 @@ export default function GroupManagePage() {
                 {(() => {
                   const filteredCandidates = getFilteredCandidates();
                   return filteredCandidates.map((candidate, index) => (
-                  <div
-                    key={candidate.id}
-                    className="bg-[#F9FAFB] rounded-lg p-4 flex items-center justify-between hover:bg-[#F3F4F6] transition-colors"
-                  >
-                    <div className="flex items-center gap-4 flex-1">
-                      <div className="w-10 h-10 rounded-full bg-[#3B82F6] text-white flex items-center justify-center font-bold flex-shrink-0">
-                        {index + 1}
+                    <div
+                      key={candidate.id}
+                      className="bg-[#F9FAFB] rounded-lg p-4 flex items-center justify-between hover:bg-[#F3F4F6] transition-colors"
+                    >
+                      <div className="flex items-center gap-4 flex-1">
+                        <div className="w-10 h-10 rounded-full bg-[#3B82F6] text-white flex items-center justify-center font-bold flex-shrink-0">
+                          {index + 1}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className="font-semibold text-[#111827]">
+                              {candidate.name}
+                            </span>
+                            {candidate.status === 'drawn' && (
+                              <span className="px-2 py-0.5 bg-[#D1FAE5] text-[#059669] text-xs font-medium rounded-full">
+                                已抽签
+                              </span>
+                            )}
+                            {candidate.status === 'waiting' && (
+                              <span className="px-2 py-0.5 bg-[#FEF3C7] text-[#92400E] text-xs font-medium rounded-full">
+                                待抽签
+                              </span>
+                            )}
+                            {candidate.status === 'absent' && (
+                              <span className="px-2 py-0.5 bg-[#FEE2E2] text-[#DC2626] text-xs font-medium rounded-full">
+                                缺考
+                              </span>
+                            )}
+                            {candidate.drawnNumber && (
+                              <span className="px-2 py-0.5 bg-gradient-to-br from-[#059669] to-[#10B981] text-white text-xs font-bold rounded">
+                                {candidate.drawnNumber}号
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm text-[#9CA3AF] space-y-0.5">
+                            <div>身份证：{candidate.idCard.replace(/(\d{6})\d{8}(\d{4})/, '$1********$2')}</div>
+                            {candidate.candidateNo && <div>考生号：{candidate.candidateNo}</div>}
+                            {candidate.registrationNo && <div>报名编号：{candidate.registrationNo}</div>}
+                            {candidate.phone && <div>手机号：{candidate.phone}</div>}
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="font-semibold text-[#111827]">
-                            {candidate.name}
-                          </span>
-                          {candidate.status === 'drawn' && (
-                            <span className="px-2 py-0.5 bg-[#D1FAE5] text-[#059669] text-xs font-medium rounded-full">
-                              已抽签
-                            </span>
-                          )}
-                          {candidate.status === 'waiting' && (
-                            <span className="px-2 py-0.5 bg-[#FEF3C7] text-[#92400E] text-xs font-medium rounded-full">
-                              待抽签
-                            </span>
-                          )}
-                          {candidate.status === 'absent' && (
-                            <span className="px-2 py-0.5 bg-[#FEE2E2] text-[#DC2626] text-xs font-medium rounded-full">
-                              缺考
-                            </span>
-                          )}
-                          {candidate.drawnNumber && (
-                            <span className="px-2 py-0.5 bg-gradient-to-br from-[#059669] to-[#10B981] text-white text-xs font-bold rounded">
-                              {candidate.drawnNumber}号
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-sm text-[#9CA3AF] space-y-0.5">
-                          <div>身份证：{candidate.idCard.replace(/(\d{6})\d{8}(\d{4})/, '$1********$2')}</div>
-                          {candidate.candidateNo && <div>考生号：{candidate.candidateNo}</div>}
-                          {candidate.registrationNo && <div>报名编号：{candidate.registrationNo}</div>}
-                          {candidate.phone && <div>手机号：{candidate.phone}</div>}
-                        </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => {
+                            setSelectedCandidate(candidate);
+                            setCandidateFormData({
+                              name: candidate.name,
+                              idCard: candidate.idCard,
+                              registrationNo: candidate.registrationNo || '',
+                              candidateNo: candidate.candidateNo || '',
+                              phone: candidate.phone || '',
+                            });
+                            setShowEditCandidateModal(true);
+                          }}
+                          className="text-[#9CA3AF] hover:text-[#3B82F6] transition-colors p-2"
+                          title="编辑考生"
+                        >
+                          <Edit size={18} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm(`确定要删除考生"${candidate.name}"吗？`)) {
+                              handleDeleteCandidate(candidate.id);
+                            }
+                          }}
+                          className="text-[#9CA3AF] hover:text-[#DC2626] transition-colors p-2"
+                          title="删除考生"
+                        >
+                          <Trash2 size={18} />
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <button
-                        onClick={() => {
-                          setSelectedCandidate(candidate);
-                          setCandidateFormData({
-                            name: candidate.name,
-                            idCard: candidate.idCard,
-                            registrationNo: candidate.registrationNo || '',
-                            candidateNo: candidate.candidateNo || '',
-                            phone: candidate.phone || '',
-                          });
-                          setShowEditCandidateModal(true);
-                        }}
-                        className="text-[#9CA3AF] hover:text-[#3B82F6] transition-colors p-2"
-                        title="编辑考生"
-                      >
-                        <Edit size={18} />
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (confirm(`确定要删除考生"${candidate.name}"吗？`)) {
-                            handleDeleteCandidate(candidate.id);
-                          }
-                        }}
-                        className="text-[#9CA3AF] hover:text-[#DC2626] transition-colors p-2"
-                        title="删除考生"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-                  </div>
-                ));
+                  ));
                 })()}
 
                 {(() => {
@@ -1596,7 +1596,7 @@ export default function GroupManagePage() {
                     return (
                       <div className="text-center py-12">
                         <Users size={48} className="mx-auto text-[#D1D5DB] mb-2" />
-                    <p className="text-[#9CA3AF]">暂无���生，点击上方按钮添加或批量导入</p>
+                        <p className="text-[#9CA3AF]">暂无���生，点击上方按钮添加或批量导入</p>
                       </div>
                     );
                   }
@@ -2028,104 +2028,103 @@ export default function GroupManagePage() {
               <div className="flex-1 overflow-y-auto mb-6">
                 <div className="space-y-3">
                   {filteredVolunteers.map((volunteer) => (
-                  <label
-                    key={volunteer.id}
-                    className={`flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                      selectedVolunteerIds.includes(volunteer.id)
+                    <label
+                      key={volunteer.id}
+                      className={`flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${selectedVolunteerIds.includes(volunteer.id)
                         ? 'border-[#3B82F6] bg-[#EFF6FF]'
                         : 'border-[#E5E7EB] hover:border-[#9CA3AF] hover:bg-[#F9FAFB]'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedVolunteerIds.includes(volunteer.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedVolunteerIds([...selectedVolunteerIds, volunteer.id]);
-                        } else {
-                          setSelectedVolunteerIds(
-                            selectedVolunteerIds.filter((id) => id !== volunteer.id)
-                          );
-                        }
-                      }}
-                      className="w-5 h-5 text-[#3B82F6] rounded focus:ring-2 focus:ring-[#3B82F6]"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold text-[#111827]">
-                          {volunteer.name}
-                        </span>
-                        <span className="text-sm text-[#9CA3AF]">
-                          @{volunteer.username}
-                        </span>
+                        }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedVolunteerIds.includes(volunteer.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedVolunteerIds([...selectedVolunteerIds, volunteer.id]);
+                          } else {
+                            setSelectedVolunteerIds(
+                              selectedVolunteerIds.filter((id) => id !== volunteer.id)
+                            );
+                          }
+                        }}
+                        className="w-5 h-5 text-[#3B82F6] rounded focus:ring-2 focus:ring-[#3B82F6]"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-semibold text-[#111827]">
+                            {volunteer.name}
+                          </span>
+                          <span className="text-sm text-[#9CA3AF]">
+                            @{volunteer.username}
+                          </span>
+                        </div>
+                        <div className="text-sm text-[#6B7280]">
+                          {volunteer.phone}
+                        </div>
                       </div>
-                      <div className="text-sm text-[#6B7280]">
-                        {volunteer.phone}
-                      </div>
+                      {selectedVolunteerIds.includes(volunteer.id) && (
+                        <div className="w-8 h-8 rounded-full bg-[#3B82F6] flex items-center justify-center">
+                          <svg
+                            className="w-5 h-5 text-white"
+                            fill="none"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                      )}
+                    </label>
+                  ))}
+
+                  {/* 空状态 */}
+                  {allVolunteers.length === 0 && (
+                    <div className="text-center py-12">
+                      <Users size={48} className="mx-auto text-[#D1D5DB] mb-2" />
+                      <p className="text-[#9CA3AF]">暂无志愿者，请先创建志愿者账号</p>
                     </div>
-                    {selectedVolunteerIds.includes(volunteer.id) && (
-                      <div className="w-8 h-8 rounded-full bg-[#3B82F6] flex items-center justify-center">
-                        <svg
-                          className="w-5 h-5 text-white"
-                          fill="none"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                    )}
-                  </label>
-                ))}
+                  )}
 
-                {/* 空状态 */}
-                {allVolunteers.length === 0 && (
-                  <div className="text-center py-12">
-                    <Users size={48} className="mx-auto text-[#D1D5DB] mb-2" />
-                    <p className="text-[#9CA3AF]">暂无志愿者，请先创建志愿者账号</p>
-                  </div>
-                )}
-
-                {/* 搜索无结果 */}
-                {allVolunteers.length > 0 && filteredVolunteers.length === 0 && (
-                  <div className="text-center py-12">
-                    <Search size={48} className="mx-auto text-[#D1D5DB] mb-2" />
-                    <p className="text-[#9CA3AF]">未找到匹配的志愿者</p>
-                    <p className="text-sm text-[#D1D5DB] mt-1">
-                      请尝试其他搜索关键词
-                    </p>
-                  </div>
-                )}
+                  {/* 搜索无结果 */}
+                  {allVolunteers.length > 0 && filteredVolunteers.length === 0 && (
+                    <div className="text-center py-12">
+                      <Search size={48} className="mx-auto text-[#D1D5DB] mb-2" />
+                      <p className="text-[#9CA3AF]">未找到匹配的志愿者</p>
+                      <p className="text-sm text-[#D1D5DB] mt-1">
+                        请尝试其他搜索关键词
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
 
-            <div className="flex items-center justify-between pt-4 border-t border-[#E5E7EB]">
-              <div className="text-sm text-[#6B7280]">
-                已选择 <span className="font-bold text-[#3B82F6]">{selectedVolunteerIds.length}</span> 名志愿者
-              </div>
-              <div className="flex gap-3">
-                <LotteryButton
-                  variant="secondary"
-                  className="flex-1"
-                  onClick={() => {
-                    setShowVolunteerModal(false);
-                    setSelectedGroup(null);
-                    setSelectedVolunteerIds([]);
-                    setVolunteerSearchQuery('');
-                  }}
-                >
-                  取消
-                </LotteryButton>
-                <LotteryButton className="flex-1" onClick={handleAssignVolunteers}>
-                  确认配置
-                </LotteryButton>
+              <div className="flex items-center justify-between pt-4 border-t border-[#E5E7EB]">
+                <div className="text-sm text-[#6B7280]">
+                  已选择 <span className="font-bold text-[#3B82F6]">{selectedVolunteerIds.length}</span> 名志愿者
+                </div>
+                <div className="flex gap-3">
+                  <LotteryButton
+                    variant="secondary"
+                    className="flex-1"
+                    onClick={() => {
+                      setShowVolunteerModal(false);
+                      setSelectedGroup(null);
+                      setSelectedVolunteerIds([]);
+                      setVolunteerSearchQuery('');
+                    }}
+                  >
+                    取消
+                  </LotteryButton>
+                  <LotteryButton className="flex-1" onClick={handleAssignVolunteers}>
+                    确认配置
+                  </LotteryButton>
+                </div>
               </div>
             </div>
           </div>
-        </div>
         );
       })()}
     </div>

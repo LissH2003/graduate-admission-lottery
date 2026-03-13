@@ -1,5 +1,5 @@
 // V3-叫号副屏页面（1920×1080px，黑色背景，投影专用）
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { X } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
@@ -10,7 +10,7 @@ export default function DisplayScreenPage() {
   const { selectedGroup } = useAppContext();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showExitButton, setShowExitButton] = useState(false);
-  const [candidates, setCandidates] = useState<any[]>([]);
+  const [, setCandidates] = useState<any[]>([]);
   const [currentCandidate, setCurrentCandidate] = useState<any>(null);
   const [nextCandidate, setNextCandidate] = useState<any>(null);
   const [progress, setProgress] = useState(0);

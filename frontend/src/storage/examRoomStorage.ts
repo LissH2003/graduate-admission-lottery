@@ -1,157 +1,203 @@
-// 考场数据存储
+// 考场数据存储 - Supabase 实现（保持同步 API）
+import { supabase } from '../lib/supabase';
+import { examRoomToCamel, examRoomToSnake, type ExamRoomSnake } from '../lib/transforms';
+import { getCurrentAcademyId } from '../lib/academy';
+
 export interface ExamRoom {
   id: string;
-  name: string; // 考场名称，如"机械楼301"
-  location: string; // 考场位置
-  building: string; // 楼栋
-  floor: string; // 楼层
-  capacity: number; // 容量
-  facilities: string[]; // 设施，如["投影仪", "白板", "音响"]
-  status: 'active' | 'inactive'; // 状态
+  name: string;
+  location: string;
+  building: string;
+  floor: string;
+  capacity: number;
+  facilities: string[];
+  status: 'active' | 'inactive';
+  description?: string;
   createdAt: string;
-  description?: string; // 备注
 }
 
-const STORAGE_KEY = 'interview_exam_rooms';
+// 内存缓存
+let examRoomsCache: ExamRoom[] | null = null;
 
-// 初始化默认考场
-const initializeDefaultRooms = (): void => {
-  const rooms = getAllExamRooms();
-  if (rooms.length === 0) {
-    const defaultRooms: ExamRoom[] = [
-      {
-        id: 'room-1',
-        name: '机械楼301',
-        location: '机械楼3楼301室',
-        building: '机械楼',
-        floor: '3',
-        capacity: 30,
-        facilities: ['投影仪', '白板', '音响', '空调'],
-        status: 'active',
-        createdAt: new Date().toLocaleString('zh-CN'),
-        description: '标准面试考场',
-      },
-      {
-        id: 'room-2',
-        name: '机械楼302',
-        location: '机械楼3楼302室',
-        building: '机械楼',
-        floor: '3',
-        capacity: 30,
-        facilities: ['投影仪', '白板', '音响', '空调'],
-        status: 'active',
-        createdAt: new Date().toLocaleString('zh-CN'),
-        description: '标准面试考场',
-      },
-      {
-        id: 'room-3',
-        name: '机械楼401',
-        location: '机械楼4楼401室',
-        building: '机械楼',
-        floor: '4',
-        capacity: 40,
-        facilities: ['投影仪', '白板', '音响', '空调', '录音设备'],
-        status: 'active',
-        createdAt: new Date().toLocaleString('zh-CN'),
-        description: '大型面试考场',
-      },
-      {
-        id: 'room-4',
-        name: '行政楼201',
-        location: '行政楼2楼201室',
-        building: '行政楼',
-        floor: '2',
-        capacity: 20,
-        facilities: ['投影仪', '白板', '空调'],
-        status: 'active',
-        createdAt: new Date().toLocaleString('zh-CN'),
-        description: '小型面试考场',
-      },
-    ];
-    defaultRooms.forEach((room) => addExamRoom(room));
-  }
-};
-
-// 获取所有考场
-export const getAllExamRooms = (): ExamRoom[] => {
+// 从 Supabase 加载数据到缓存（带学院过滤）
+const loadFromSupabase = async (): Promise<ExamRoom[]> => {
   try {
-    const data = localStorage.getItem(STORAGE_KEY);
-    return data ? JSON.parse(data) : [];
+    const academyId = getCurrentAcademyId();
+    if (!academyId) {
+      console.log('未选择学院，跳过加载考场数据');
+      return [];
+    }
+    
+    const { data, error } = await supabase
+      .from('lottery_exam_rooms')
+      .select('*')
+      .eq('academy_id', academyId!)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Failed to load exam rooms from Supabase:', error);
+      return [];
+    }
+
+    return (data || []).map((room) => examRoomToCamel(room as ExamRoomSnake));
   } catch (error) {
-    console.error('Failed to get exam rooms:', error);
+    console.error('Failed to load exam rooms:', error);
     return [];
   }
 };
 
+// 确保缓存已初始化
+const ensureCache = async (): Promise<ExamRoom[]> => {
+  if (examRoomsCache === null) {
+    examRoomsCache = await loadFromSupabase();
+  }
+  return examRoomsCache || [];
+};
+
+// 同步获取缓存
+const getCacheSync = (): ExamRoom[] => {
+  return examRoomsCache || [];
+};
+
+// ========== 初始化 API ==========
+
+// 手动初始化（登录后调用）
+export const initExamRoomStorage = async (): Promise<void> => {
+  await ensureCache();
+};
+
+// ========== 同步 API（保持与原 contract 一致）==========
+
+// 获取所有考场
+export const getAllExamRooms = (): ExamRoom[] => {
+  return getCacheSync();
+};
+
 // 获取单个考场
 export const getExamRoomById = (id: string): ExamRoom | undefined => {
-  const rooms = getAllExamRooms();
+  const rooms = getCacheSync();
   return rooms.find((room) => room.id === id);
 };
 
 // 获取活动状态的考场
 export const getActiveExamRooms = (): ExamRoom[] => {
-  const rooms = getAllExamRooms();
+  const rooms = getCacheSync();
   return rooms.filter((room) => room.status === 'active');
 };
 
 // 根据楼栋获取考场
 export const getExamRoomsByBuilding = (building: string): ExamRoom[] => {
-  const rooms = getAllExamRooms();
+  const rooms = getCacheSync();
   return rooms.filter((room) => room.building === building);
 };
 
-// 添加考场
-export const addExamRoom = (room: ExamRoom): void => {
-  try {
-    const rooms = getAllExamRooms();
-    rooms.push(room);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(rooms));
-  } catch (error) {
-    console.error('Failed to add exam room:', error);
+// 添加考场（ID 由数据库自动生成）
+export const addExamRoom = async (room: Omit<ExamRoom, 'id'>): Promise<string | null> => {
+  const academyId = getCurrentAcademyId();
+  if (!academyId) {
+    console.error('未选择学院，无法添加考场');
+    return null;
   }
+
+  const snakeRoom = examRoomToSnake(room as ExamRoom);
+  const { id: _, ...insertData } = snakeRoom as any;
+  
+  const { data, error } = await supabase
+    .from('lottery_exam_rooms')
+    .insert({ ...insertData, academy_id: academyId })
+    .select('id')
+    .single();
+    
+  if (error) {
+    console.error('Failed to add exam room to Supabase:', error);
+    return null;
+  }
+  
+  const realId = (data as any).id;
+  const rooms = getCacheSync();
+  rooms.push({ ...room as ExamRoom, id: realId });
+  examRoomsCache = rooms;
+  
+  return realId;
 };
 
-// 更新考场
+// 更新考场（带学院过滤）
 export const updateExamRoom = (id: string, updates: Partial<ExamRoom>): void => {
-  try {
-    const rooms = getAllExamRooms();
-    const index = rooms.findIndex((room) => room.id === id);
-    if (index !== -1) {
-      rooms[index] = { ...rooms[index], ...updates };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(rooms));
-    }
-  } catch (error) {
-    console.error('Failed to update exam room:', error);
+  const rooms = getCacheSync();
+  const index = rooms.findIndex((room) => room.id === id);
+  if (index !== -1) {
+    rooms[index] = { ...rooms[index], ...updates };
+    examRoomsCache = rooms;
   }
+
+  const academyId = getCurrentAcademyId();
+  if (!academyId) {
+    console.error('未选择学院，无法更新考场');
+    return;
+  }
+  
+  const snakeUpdates = examRoomToSnake(updates);
+  supabase
+    .from('lottery_exam_rooms')
+    .update(snakeUpdates as never)
+    .eq('id', id)
+    .eq('academy_id', academyId!)
+    .then(({ error }) => {
+      if (error) console.error('Failed to update exam room in Supabase:', error);
+    });
 };
 
-// 删除考场
+// 删除考场（带学院过滤）
 export const deleteExamRoom = (id: string): void => {
-  try {
-    const rooms = getAllExamRooms();
-    const filtered = rooms.filter((room) => room.id !== id);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-  } catch (error) {
-    console.error('Failed to delete exam room:', error);
+  const rooms = getCacheSync();
+  examRoomsCache = rooms.filter((room) => room.id !== id);
+
+  const academyId = getCurrentAcademyId();
+  if (!academyId) {
+    console.error('未选择学院，无法删除考场');
+    return;
   }
+  
+  supabase
+    .from('lottery_exam_rooms')
+    .delete()
+    .eq('id', id)
+    .eq('academy_id', academyId!)
+    .then(({ error }) => {
+      if (error) console.error('Failed to delete exam room from Supabase:', error);
+    });
 };
 
-// 清空所有考场
+// 清空所有考场（带学院过滤）
 export const clearAllExamRooms = (): void => {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch (error) {
-    console.error('Failed to clear exam rooms:', error);
+  examRoomsCache = [];
+
+  const academyId = getCurrentAcademyId();
+  if (!academyId) {
+    console.error('未选择学院，无法清空考场');
+    return;
   }
+  
+  supabase
+    .from('lottery_exam_rooms')
+    .delete()
+    .eq('academy_id', academyId!)
+    .then(({ error }) => {
+      if (error) console.error('Failed to clear exam rooms from Supabase:', error);
+    });
 };
 
 // 获取所有楼栋列表
 export const getAllBuildings = (): string[] => {
-  const rooms = getAllExamRooms();
+  const rooms = getCacheSync();
   const buildings = new Set(rooms.map((room) => room.building));
   return Array.from(buildings).sort();
 };
 
-// 初始化
-initializeDefaultRooms();
+// ========== 异步 API（用于强制刷新）==========
+
+// 强制从 Supabase 刷新数据
+export const refreshExamRooms = async (): Promise<ExamRoom[]> => {
+  examRoomsCache = await loadFromSupabase();
+  return examRoomsCache;
+};

@@ -1,5 +1,5 @@
 // 面试批次管理页面
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { LotteryButton } from '../components/lottery/LotteryButton';
 import { DateTimePicker } from '../components/DateTimePicker';
@@ -24,6 +24,7 @@ import * as candidateStorage from '../../storage/candidateStorage';
 import * as examRoomStorage from '../../storage/examRoomStorage';
 import * as volunteerStorage from '../../storage/volunteerStorage';
 import * as XLSX from 'xlsx';
+import { toast } from 'sonner';
 
 export default function BatchManagePage() {
   const navigate = useNavigate();
@@ -77,9 +78,9 @@ export default function BatchManagePage() {
   const totalCandidates = filteredBatches.reduce((sum, b) => sum + (b.totalCandidates || 0), 0);
 
   // 新建批次
-  const handleCreateBatch = () => {
+  const handleCreateBatch = async () => {
     if (!formData.yearMonth || !formData.batchName) {
-      alert('请填写完整信息');
+      toast.warning('请填写完整信息');
       return;
     }
 
@@ -100,16 +101,22 @@ export default function BatchManagePage() {
       totalCandidates: 0,
     };
 
-    batchStorage.addBatch(newBatch);
-    loadData();
-    setShowNewModal(false);
-    setFormData({ yearMonth: '', batchName: '' });
+    const newId = await batchStorage.addBatch(newBatch);
+    if (newId) {
+      toast.success('批次创建成功');
+      await batchStorage.refreshBatches();
+      loadData();
+      setShowNewModal(false);
+      setFormData({ yearMonth: '', batchName: '' });
+    } else {
+      toast.error('批次创建失败');
+    }
   };
 
   // 编辑批次
   const handleEditBatch = () => {
     if (!selectedBatch || !formData.yearMonth || !formData.batchName) {
-      alert('请填写完整信息');
+      toast.warning('请填写完整信息');
       return;
     }
 
@@ -155,7 +162,7 @@ export default function BatchManagePage() {
     const batchGroups = groupStorage.getGroupsByBatchId(batch.id);
     
     if (batchGroups.length === 0) {
-      alert('该批次暂无分组数据');
+      toast.info('该批次暂无分组数据');
       return;
     }
 
@@ -202,7 +209,7 @@ export default function BatchManagePage() {
     });
 
     if (exportData.length === 0) {
-      alert('该批次暂无考生数据');
+      toast.info('该批次暂无考生数据');
       return;
     }
 
@@ -509,8 +516,8 @@ export default function BatchManagePage() {
                 </label>
                 <DateTimePicker
                   value={formData.yearMonth}
-                  onChange={(e) =>
-                    setFormData({ ...formData, yearMonth: e.target.value })
+                  onChange={(value) =>
+                    setFormData({ ...formData, yearMonth: value })
                   }
                   className="w-full px-4 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
                 />

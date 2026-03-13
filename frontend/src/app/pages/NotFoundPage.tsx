@@ -1,5 +1,5 @@
 // 404 页面
-import React from 'react';
+// React 17+ 不需要显式导入
 
 export default function NotFoundPage() {
   return (

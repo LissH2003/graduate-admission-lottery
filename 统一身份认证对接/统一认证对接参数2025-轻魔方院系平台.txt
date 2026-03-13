@@ -1,0 +1,5 @@
+应用名称：轻魔方院系平台
+sso地址：https://sso.ustb.edu.cn
+认证协议：Oauth
+appid：YW2025032
+appsecret：5842b5d104344e5c89fe6ac7eaea5947

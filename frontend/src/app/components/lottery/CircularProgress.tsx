@@ -1,5 +1,5 @@
 // 环形进度条组件 - SVG（直径120px，中央显示百分比）
-import React from 'react';
+// React 17+ 不需要显式导入
 
 interface CircularProgressProps {
   percentage: number; // 0-100

@@ -1,8 +1,11 @@
 // 考场选择页 - 用户登录后选择要进入的考场
-import React, { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { LotteryButton } from '../components/lottery/LotteryButton';
-import { Calendar, MapPin, Users, Settings, User } from 'lucide-react';
+import { AcademySwitcher } from '../components/AcademySwitcher';
+import { Calendar, MapPin, Users, Settings, LogOut } from 'lucide-react';
+import { useAppContext } from '../context/AppContext';
+import { logout } from '../../lib/auth';
 
 interface ExamRoom {
   id: string;
@@ -74,9 +77,35 @@ const mockExamRooms: ExamRoom[] = [
 
 export default function ExamSelectPage() {
   const navigate = useNavigate();
+  const { setCurrentUser, setCurrentAcademy } = useAppContext();
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
+  const logoutBtnRef = useRef<HTMLButtonElement>(null);
 
-  const getStatusLabel = (status: ExamRoom['status']) => {
+  // 使用原生事件绑定退出按钮（解决点击无效问题）
+  useEffect(() => {
+    const btn = logoutBtnRef.current;
+    if (!btn) return;
+    
+    const handleNativeLogout = async (e: MouseEvent) => {
+      console.log('Native logout clicked!');
+      e.preventDefault();
+      e.stopPropagation();
+      // 清除所有登录相关存储
+      localStorage.removeItem('current_user');
+      localStorage.removeItem('current_academy');
+      // 清除 auth 模块的存储（SSO/Mock 登录使用）
+      await logout();
+      setCurrentUser(null);
+      setCurrentAcademy(null);
+      // 使用原生导航强制刷新
+      window.location.href = './';
+    };
+    
+    btn.addEventListener('click', handleNativeLogout);
+    return () => btn.removeEventListener('click', handleNativeLogout);
+  }, [setCurrentAcademy, setCurrentUser]);
+
+  /* const getStatusLabel = (status: ExamRoom['status']) => {
     switch (status) {
       case 'pending':
         return '未开始';
@@ -96,16 +125,19 @@ export default function ExamSelectPage() {
       case 'completed':
         return 'completed';
     }
-  };
+  }; */
 
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
       {/* 顶部导航 */}
       <div className="bg-white border-b border-[#E5E7EB]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-auto sm:h-20 py-4 sm:py-0 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-[#111827]">考场管理</h1>
-            <p className="text-xs sm:text-sm text-[#9CA3AF]">选择要进入的考场</p>
+          <div className="flex items-center gap-4">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-[#111827]">考场管理</h1>
+              <p className="text-xs sm:text-sm text-[#9CA3AF]">选择要进入的考场</p>
+            </div>
+            <AcademySwitcher />
           </div>
           <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
             <LotteryButton variant="secondary" onClick={() => navigate('/batch-manage')} className="flex-1 sm:flex-initial">
@@ -118,11 +150,20 @@ export default function ExamSelectPage() {
             </LotteryButton>
             <LotteryButton variant="secondary" onClick={() => navigate('/volunteer-manage')} className="flex-1 sm:flex-initial">
               <Users size={18} />
-              <span className="hidden sm:inline">志愿者管理</span>
+              <span className="hidden sm:inline">通讯录管理</span>
             </LotteryButton>
-            <LotteryButton variant="secondary" onClick={() => navigate('/')} className="flex-1 sm:flex-initial">
-              退出登录
-            </LotteryButton>
+            <button
+              ref={logoutBtnRef}
+              type="button"
+              style={{ pointerEvents: 'auto', position: 'relative', zIndex: 100 }}
+              className="flex-1 sm:flex-initial h-12 px-4 rounded-lg font-medium 
+                       bg-gray-200 text-[#111827] hover:bg-gray-300 active:scale-95
+                       transition-all duration-200 flex items-center justify-center gap-2
+                       cursor-pointer select-none"
+            >
+              <LogOut size={18} />
+              <span className="hidden sm:inline">退出登录</span>
+            </button>
           </div>
         </div>
       </div>

@@ -1,20 +1,16 @@
 // 管理员主页 - 功能导航中心
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { LotteryButton } from '../components/lottery/LotteryButton';
 import {
   Calendar,
-  Settings,
   Users,
   Building2,
   LogOut,
-  Shield,
-  TrendingUp,
   Download,
   Eye,
   X,
   Play,
-  ArrowRight,
   StopCircle,
   Search,
 } from 'lucide-react';
@@ -24,12 +20,15 @@ import * as candidateStorage from '../../storage/candidateStorage';
 import * as examRoomStorage from '../../storage/examRoomStorage';
 import * as volunteerStorage from '../../storage/volunteerStorage';
 import * as XLSX from 'xlsx';
+import { toast } from 'sonner';
+import { logout } from '../../lib/auth';
 import { useAppContext } from '../context/AppContext';
-const logoImage = '/logo.png';
+import { AcademySwitcher } from '../components/AcademySwitcher';
+const logoImage = './logo.png';
 
 export default function AdminHomePage() {
   const navigate = useNavigate();
-  const { setSelectedGroup } = useAppContext();
+  const { currentUser, setSelectedGroup, currentAcademy, setCurrentUser, setCurrentAcademy } = useAppContext();
 
   // 实时统计数据状态
   const [stats, setStats] = useState({
@@ -39,7 +38,7 @@ export default function AdminHomePage() {
     activeExamRooms: 0,
   });
 
-  const [lastUpdateTime, setLastUpdateTime] = useState<string>('');
+  const [, setLastUpdateTime] = useState<string>('');
   const [selectedRoom, setSelectedRoom] = useState<examRoomStorage.ExamRoom | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showEndBatchConfirm, setShowEndBatchConfirm] = useState(false);
@@ -97,14 +96,14 @@ export default function AdminHomePage() {
     setLastUpdateTime(now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
   };
 
-  const statsDisplay = [
+  /* const statsDisplay = [
     { label: '当前批次', value: stats.batchCount.toString(), trend: '', color: 'text-[#3B82F6]' },
     { label: '总分组数', value: stats.groupCount.toString(), trend: '', color: 'text-[#059669]' },
     { label: '总考生数', value: stats.candidateCount.toString(), trend: '', color: 'text-[#D97706]' },
     { label: '启用考场', value: stats.activeExamRooms.toString(), trend: '', color: 'text-[#DC2626]' },
-  ];
+  ]; */
 
-  const modules = [
+  /* const modules = [
     {
       title: '批次及分组管理',
       description: '创建和管理面试批次及分组',
@@ -120,13 +119,13 @@ export default function AdminHomePage() {
       route: '/exam-config',
     },
     {
-      title: '志愿者管理',
-      description: '管理志愿者和权限分配',
+      title: '通讯录管理',
+      description: '管理管理员和志愿者账号',
       icon: Users,
       color: 'from-[#D97706] to-[#B45309]',
       route: '/volunteer-manage',
     },
-  ];
+  ]; */
 
   // 计算考场完成进度（只统计今天的批次）
   const calculateRoomProgress = (roomId: string) => {
@@ -173,7 +172,7 @@ export default function AdminHomePage() {
     const roomGroups = groupStorage.getGroupsByExamRoomId(room.id);
 
     if (roomGroups.length === 0) {
-      alert('该考场没有分组数据');
+      toast.info('该考场没有分组数据');
       return;
     }
 
@@ -215,7 +214,7 @@ export default function AdminHomePage() {
     });
 
     if (exportData.length === 0) {
-      alert('该考场没有考生数据');
+      toast.info('该考场没有考生数据');
       return;
     }
 
@@ -348,19 +347,35 @@ export default function AdminHomePage() {
             <div className="h-8 w-px bg-[#E5E7EB]"></div>
             <div>
               <h1 className="text-xl font-bold text-[#111827]">管理员控制台</h1>
-              <p className="text-xs text-[#9CA3AF]">研究生复试抽签系统</p>
+              <p className="text-xs text-[#9CA3AF]">
+                研究生复试抽签系统 · {currentAcademy?.name || '未选择学院'}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {/* 学院切换 - 仅超级管理员可见 */}
+            <AcademySwitcher />
+
             <div className="flex items-center gap-2 px-3 py-1.5 bg-[#EFF6FF] border border-[#BFDBFE] rounded-lg">
               <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#1E40AF] to-[#3B82F6] flex items-center justify-center text-white text-xs font-medium">
-                管
+                {currentUser?.name?.charAt(0) || (currentUser?.role === 'admin' ? '管' : '志')}
               </div>
-              <span className="text-xs text-[#1E40AF] font-medium">级管理</span>
+              <div className="flex flex-col">
+                <span className="text-xs text-[#1E40AF] font-medium leading-tight">{currentUser?.name || '未知用户'}</span>
+                <span className="text-[10px] text-[#6B7280]">{currentUser?.role === 'admin' ? '管理员' : '志愿者'}</span>
+              </div>
             </div>
             <button
-              onClick={() => navigate('/')}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-[#6B7280] bg-white border border-[#E5E7EB] rounded-lg hover:bg-[#F9FAFB] transition-colors"
+              type="button"
+              onClick={async () => {
+                localStorage.removeItem('current_user');
+                localStorage.removeItem('current_academy');
+                await logout();
+                setCurrentUser(null);
+                setCurrentAcademy(null);
+                window.location.href = './';
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-[#6B7280] bg-white border border-[#E5E7EB] rounded-lg hover:bg-[#F9FAFB] transition-colors cursor-pointer"
             >
               <LogOut size={14} />
               退出登录
@@ -423,7 +438,7 @@ export default function AdminHomePage() {
               </div>
               <div className="flex-1">
                 <h3 className="text-base font-bold text-[#111827] mb-0.5">
-                  志愿者管理
+                  通讯录管理
                 </h3>
                 <p className="text-xs text-[#9CA3AF]">管理志愿者账号和权限</p>
                 <div className="mt-1 text-xs text-[#F59E0B] font-medium">
@@ -541,8 +556,8 @@ export default function AdminHomePage() {
                               {room.name}
                             </span>
                             <span className={`text-xs px-2 py-0.5 rounded-full ${room.status === 'active'
-                                ? 'bg-[#D1FAE5] text-[#059669]'
-                                : 'bg-[#F3F4F6] text-[#6B7280]'
+                              ? 'bg-[#D1FAE5] text-[#059669]'
+                              : 'bg-[#F3F4F6] text-[#6B7280]'
                               }`}>
                               {room.status === 'active' ? '启用' : '禁用'}
                             </span>

@@ -1,20 +1,22 @@
 // 志愿者端 - 分组选择页（按志愿者有权限的分组展示）
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { LotteryButton } from '../components/lottery/LotteryButton';
-import { Calendar, MapPin, Users, User, LogOut, Clock } from 'lucide-react';
+import { Calendar, MapPin, Users, LogOut, Clock } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
+import { logout } from '../../lib/auth';
 import * as examRoomStorage from '../../storage/examRoomStorage';
 import * as volunteerStorage from '../../storage/volunteerStorage';
 import * as groupStorage from '../../storage/groupStorage';
 import * as candidateStorage from '../../storage/candidateStorage';
-const logoImage = '/logo.png';
+const logoImage = './logo.png';
 
 export default function VolunteerExamSelectPage() {
   const navigate = useNavigate();
   const {
     currentUser,
     setCurrentUser,
+    setCurrentAcademy,
     setSelectedExamRoom,
     setSelectedGroup,
   } = useAppContext();
@@ -23,16 +25,10 @@ export default function VolunteerExamSelectPage() {
   const [assignedGroups, setAssignedGroups] = useState<groupStorage.Group[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
 
+  // 加载志愿者被分配的分组（路由守卫已处理登录检查）
   useEffect(() => {
-    // 检查是否已登录
-    if (!currentUser || currentUser.role !== 'volunteer') {
-      navigate('/');
-      return;
-    }
-
-    // 加载志愿者被分配的分组
     loadAssignedGroups();
-  }, [currentUser, navigate]);
+  }, [currentUser]);
 
   // 定时更新当前时间，用于实时计算状态
   useEffect(() => {
@@ -129,9 +125,13 @@ export default function VolunteerExamSelectPage() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    localStorage.removeItem('current_user');
+    localStorage.removeItem('current_academy');
+    await logout();
     setCurrentUser(null);
-    navigate('/');
+    setCurrentAcademy(null);
+    window.location.href = './';
   };
 
   const handleEnterGroup = () => {
@@ -174,8 +174,9 @@ export default function VolunteerExamSelectPage() {
               <span className="text-xs text-[#059669] font-medium hidden sm:inline">{currentUser?.name}</span>
             </div>
             <button
+              type="button"
               onClick={handleLogout}
-              className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 text-xs text-[#6B7280] bg-white border border-[#E5E7EB] rounded-lg hover:bg-[#F9FAFB] transition-colors"
+              className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 text-xs text-[#6B7280] bg-white border border-[#E5E7EB] rounded-lg hover:bg-[#F9FAFB] transition-colors cursor-pointer"
             >
               <LogOut size={14} />
               <span className="hidden sm:inline">退出登录</span>
@@ -334,7 +335,6 @@ export default function VolunteerExamSelectPage() {
             </h3>
             <ul className="space-y-2 text-sm text-[#1E40AF]">
               <li>• 点击选择您需要协助的分组</li>
-              <li>• 状态说明：开始时间前2小时为"进中"，开始时间后为"已结束"，其他为"未开始"</li>
               <li>• 点击"进入抽签控制台"开始工作</li>
               <li>• 在控制台中可以进行考生抽签、标记缺考等操作</li>
               <li>• 如有问题请联系考场负责老师</li>
